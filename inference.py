@@ -267,12 +267,16 @@ class Mars5TTS(nn.Module, ModelHubMixin):
                                beam_width=cfg.beam_width, beam_length_penalty=1,
                                n_phones_gen=round(cfg.eos_estimated_gen_length_factor*len(text)), 
                                vocode=False, use_kv_cache=cfg.use_kv_cache)
+        
+        print("AR codes: ", ar_codes.shape, ar_codes.max(), ar_codes.min())
 
         # Parse AR output
         output_tokens = ar_codes - len(self.texttok.vocab)
         output_tokens = output_tokens.clamp(min=0).squeeze()[first_codec_idx:].cpu().tolist()
         gen_codes_decoded = self.speechtok.decode_int(output_tokens)
         gen_codes_decoded = torch.tensor([s for s in gen_codes_decoded if type(s) == int], dtype=torch.long, device=self.device)
+
+        print("Gen codes decoded: ", gen_codes_decoded.shape, gen_codes_decoded.max(), gen_codes_decoded.min())
 
         c_text = torch.tensor(text_tokens, dtype=torch.long, device=self.device)[None]
         c_codes = prompt_codec.permute(0, 2, 1)
@@ -281,6 +285,10 @@ class Mars5TTS(nn.Module, ModelHubMixin):
 
         _x = gen_codes_decoded[None, n_start_skip:, None].repeat(1, 1, 8) # (seq_len) -> (1, seq_len, 8)
         x_padding_mask = torch.zeros((1, _x.shape[1]), dtype=torch.bool, device=_x.device)
+
+        print("_X: ", _x.shape, _x.max(), _x.min())
+
+        print(x_padding_mask)
 
         # ---> perform DDPM NAR inference
         T = self.default_T
@@ -296,6 +304,8 @@ class Mars5TTS(nn.Module, ModelHubMixin):
         final_output = perform_simple_inference(self.codecnar,(
             c_text, c_codes, c_texts_lengths, c_codes_lengths, _x, x_padding_mask
         ), diff, diff.num_timesteps, torch.float16, dsh=dsh_cfg, retain_quant0=True) # (bs, seq_len, n_quant)
+
+        print("Final output: ", final_output.shape, final_output.max(), final_output.min())
 
         skip_front = raw_prompt_acoustic_len if cfg.deep_clone else 0 
         final_output = final_output[0, skip_front:].to(self.device)  # (seq_len, n_quant)

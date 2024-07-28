@@ -402,13 +402,15 @@ def perform_simple_inference(model: torch.nn.Module, batch: tuple, diff: Multino
 
     # (bs=1, N), (bs, seq_len2, 8), (bs,)
     c_text, c_codes, c_text_lengths, c_codes_lengths, x, x_padding_mask = batch
-        
+    print("INSIDE DIFF, X: ", x.shape, x.max().item(), x.min().item())
     device = c_text.device
     bs = c_text.shape[0]
     x_quant0 = x[..., 0].clone() # (bs, seq_len) 0th quant level
     x = torch.randint(0, diff.num_classes, x.shape, dtype=x.dtype, device=device)
     # CRITICAL LINE: override quantization level 0 with provided quant0 level.
-    x[..., 0] = x_quant0 
+    x[..., 0] = x_quant0
+
+    print("INSIDE DIFF, X: ", x.shape, x.max().item(), x.min().item())
 
     # RePaint paper resample scheduling
     times = get_schedule(T, jump_n_sample=dsh.jump_n_sample, jump_len=dsh.jump_len)
