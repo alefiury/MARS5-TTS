@@ -461,6 +461,7 @@ def perform_simple_inference(model: torch.nn.Module, batch: tuple, diff: Multino
             # Reverse diffusion: q
             cbatch = (c_text, c_codes, c_text_lengths, c_codes_lengths, x, x_padding_mask, t) 
             x, x_0_pred = reverse_diffusion(diff, model, cbatch, x_known, m, temperature=dsh.x_0_temp, alphas=alphas, ensemble_size=1, dsh=dsh)
+            print("REVERSE: ", x.shape, x.max().item(), x.min().item())
         else:
             # Forward diffusion: p
             if dsh.enable_kevin_scaled_inference: x = forward_diffusion(diff, dtype, x, t, c=c, dsh=dsh)
